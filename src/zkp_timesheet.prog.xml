@@ -18,8 +18,8 @@
       <DESCRIPT>Grid Display</DESCRIPT>
       <TYPE>N</TYPE>
       <NEXTSCREEN>0110</NEXTSCREEN>
-      <LINES>027</LINES>
-      <COLUMNS>122</COLUMNS>
+      <LINES>200</LINES>
+      <COLUMNS>255</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -30,10 +30,14 @@
        <TYPE>CUST_CTRL</TYPE>
        <NAME>GS_SCR_110_CONTAINER</NAME>
        <ELEMENT_OF>SCREEN</ELEMENT_OF>
-       <LINE>003</LINE>
-       <COLUMN>002</COLUMN>
-       <LENGTH>120</LENGTH>
-       <HEIGHT>021</HEIGHT>
+       <LINE>001</LINE>
+       <COLUMN>001</COLUMN>
+       <LENGTH>255</LENGTH>
+       <HEIGHT>100</HEIGHT>
+       <C_RESIZE_V>X</C_RESIZE_V>
+       <C_RESIZE_H>X</C_RESIZE_H>
+       <C_LINE_MIN>010</C_LINE_MIN>
+       <C_COLN_MIN>010</C_COLN_MIN>
       </RPY_DYCATT>
      </CONTAINERS>
      <FIELDS>
@@ -1903,7 +1907,7 @@
     <TIT>
      <RSMPE_TITT>
       <CODE>TB_0110</CODE>
-      <TEXT>Grid Display</TEXT>
+      <TEXT>Output Display</TEXT>
      </RSMPE_TITT>
     </TIT>
    </CUA>

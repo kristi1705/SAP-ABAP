@@ -42,7 +42,6 @@ CLASS lcl_display DEFINITION.
              hours(3)     TYPE p DECIMALS 2,
              days(3)      TYPE p DECIMALS 2,
              overtime(1)  TYPE c,
-             row_color(4) TYPE c,
              col_color    TYPE slis_t_specialcol_alv,
              salv_color   TYPE lvc_t_scol,
              d_01(3)      TYPE p DECIMALS 2,
@@ -84,6 +83,7 @@ CLASS lcl_display DEFINITION.
           mt_timesheet    TYPE tt_cl_timesheet,
           mt_employee     TYPE tt_cl_employee,
           mo_grid         TYPE REF TO cl_gui_alv_grid,
+          mo_salv         TYPE REF TO cl_salv_table,
           mv_hide_weekend TYPE abap_bool.
 
     METHODS: execute IMPORTING iv_curr_date TYPE c
@@ -93,20 +93,39 @@ CLASS lcl_display DEFINITION.
     METHODS: convert_data.
 
     METHODS: reuse_alv IMPORTING iv_date      TYPE c,
+
       build_alv_fcat IMPORTING iv_date TYPE c
                      CHANGING  ct_fcat TYPE slis_t_fieldcat_alv,
+
       build_alv_layout CHANGING  cs_layout TYPE slis_layout_alv,
+
       sum_msg_reuse.
 
     METHODS: create_grid IMPORTING iv_date      TYPE c,
+
       build_grid_layout IMPORTING iv_date   TYPE c
                         CHANGING  ct_fcat   TYPE lvc_t_fcat
                                   cs_layout TYPE lvc_s_layo,
-      handle_grid_toolbar FOR EVENT toolbar OF cl_gui_alv_grid IMPORTING e_object e_interactive,
+
+      add_grid_buttons FOR EVENT toolbar OF cl_gui_alv_grid IMPORTING e_object e_interactive,
+
       handle_grid_ucomm FOR EVENT user_command OF cl_gui_alv_grid IMPORTING e_ucomm,
+
+      weekend_status_grid,
+
       sum_msg_grid.
 
-    METHODS: create_salv IMPORTING iv_date TYPE c.
+    METHODS: create_salv IMPORTING iv_date TYPE c,
+
+      set_columns IMPORTING iv_curr_date TYPE c,
+
+      set_buttons,
+
+      handle_salv_ucomm FOR EVENT added_function OF cl_salv_events_table IMPORTING e_salv_function,
+
+      weekend_status_salv,
+
+      sum_msg_salv.
 
 ENDCLASS.
 
@@ -172,12 +191,9 @@ CLASS lcl_display IMPLEMENTATION.
 
           WHEN 'X'.
 
-            <ls_output>-row_color = 'C610'.
-
             APPEND INITIAL LINE TO <ls_output>-salv_color ASSIGNING FIELD-SYMBOL(<ls_salv_color>).
             <ls_salv_color>-color-col = col_negative.
             <ls_salv_color>-color-int = 1.
-            <ls_salv_color>-color-inv = 0.
 
         ENDCASE.
 
@@ -203,7 +219,6 @@ CLASS lcl_display IMPLEMENTATION.
 
     cs_layout-zebra = 'X'.
     cs_layout-colwidth_optimize = 'X'.
-    cs_layout-info_fieldname = 'ROW_COLOR'.
     cs_layout-box_fieldname = 'SELECT_LINES'.
     cs_layout-coltab_fieldname = 'COL_COLOR'.
     cs_layout-cell_merge = ' '.
@@ -220,7 +235,7 @@ CLASS lcl_display IMPLEMENTATION.
           lv_day_name      TYPE string,
           lv_day_num(2)    TYPE n,
           ls_col_color     TYPE slis_specialcol_alv,
-          ls_alv_output    TYPE ty_output,
+          ls_output        TYPE ty_output,
           lv_col_pos       TYPE i.
 
     FIELD-SYMBOLS: <lv_weekend> TYPE any.
@@ -256,18 +271,30 @@ CLASS lcl_display IMPLEMENTATION.
       lv_day_name = |{ lv_date+6(2) } { lv_weekday(3) }|.
       DATA(lv_fieldname) = 'D_' && lv_day_num.
 
-      LOOP AT mt_output INTO ls_alv_output.
+      LOOP AT mt_output INTO ls_output.
 
-        ASSIGN COMPONENT lv_fieldname OF STRUCTURE ls_alv_output TO <lv_weekend>.
+        ASSIGN COMPONENT lv_fieldname OF STRUCTURE ls_output TO <lv_weekend>.
+
+        CASE ls_output-overtime.
+
+          WHEN 'X'.
+            ls_col_color-fieldname = lv_fieldname.
+            ls_col_color-color-col = '6'.
+            ls_col_color-color-int = '1'.
+            APPEND ls_col_color TO ls_output-col_color.
+            CLEAR ls_col_color.
+            MODIFY mt_output FROM ls_output.
+
+        ENDCASE.
 
         IF ( lv_day_name CS 'SUN' OR lv_day_name CS 'SAT' ) AND <lv_weekend> IS NOT INITIAL.
 
           ls_col_color-fieldname = lv_fieldname.
           ls_col_color-color-col = '6'.
           ls_col_color-color-int = '1'.
-          APPEND ls_col_color TO ls_alv_output-col_color.
+          APPEND ls_col_color TO ls_output-col_color.
           CLEAR ls_col_color.
-          MODIFY mt_output FROM ls_alv_output.
+          MODIFY mt_output FROM ls_output.
 
         ENDIF.
 
@@ -361,11 +388,10 @@ CLASS lcl_display IMPLEMENTATION.
                        CHANGING ct_fcat = lt_fcat
                                 cs_layout = ls_layout ).
 
-    MOVE 'ROW_COLOR' TO ls_layout-info_fname.
     MOVE 'COL_COLOR' TO ls_layout-ctab_fname.
     CLEAR ls_layout-box_fname.
 
-    SET HANDLER handle_grid_toolbar FOR mo_grid.
+    SET HANDLER add_grid_buttons FOR mo_grid.
     SET HANDLER handle_grid_ucomm FOR mo_grid.
 
     mo_grid->set_table_for_first_display(
@@ -406,7 +432,7 @@ CLASS lcl_display IMPLEMENTATION.
 
   ENDMETHOD.
 
-  METHOD handle_grid_toolbar.
+  METHOD add_grid_buttons.
 
     DATA: ls_show TYPE stb_button,
           ls_sum  TYPE stb_button.
@@ -429,67 +455,73 @@ CLASS lcl_display IMPLEMENTATION.
 
   METHOD handle_grid_ucomm.
 
-    DATA: lt_fcat   TYPE lvc_t_fcat,
-          ls_fcat   TYPE lvc_s_fcat,
-          ls_layout TYPE lvc_s_layo.
-
     CASE e_ucomm.
 
       WHEN 'FC_SHOW'.
 
-        mo_grid->get_frontend_fieldcatalog( IMPORTING et_fieldcatalog = lt_fcat ).
-        mo_grid->get_frontend_layout( IMPORTING es_layout = ls_layout ).
-
-        CASE mv_hide_weekend.
-
-          WHEN 'X'.
-
-            mv_hide_weekend = ' '.
-
-            LOOP AT lt_fcat INTO ls_fcat.
-
-              ls_fcat-col_pos = sy-tabix.
-
-              IF ls_fcat-no_out = 'X' AND ls_fcat-fieldname <> 'SELECTED_LINES'.
-
-                ls_fcat-no_out = ' '.
-
-              ENDIF.
-
-              MODIFY lt_fcat FROM ls_fcat TRANSPORTING no_out col_pos.
-
-            ENDLOOP.
-
-          WHEN ' '.
-
-            mv_hide_weekend = 'X'.
-
-            LOOP AT lt_fcat INTO ls_fcat.
-
-              ls_fcat-col_pos = sy-tabix.
-
-              IF ls_fcat-seltext CS 'SUN' OR ls_fcat-seltext CS 'SAT'.
-
-                ls_fcat-no_out = 'X'.
-
-              ENDIF.
-
-              MODIFY lt_fcat FROM ls_fcat TRANSPORTING no_out col_pos.
-
-            ENDLOOP.
-
-        ENDCASE.
-
-        ls_layout-cwidth_opt = 'X'.
-
-        mo_grid->set_frontend_fieldcatalog( EXPORTING it_fieldcatalog = lt_fcat ).
-        mo_grid->set_frontend_layout( EXPORTING is_layout = ls_layout ).
+        weekend_status_grid( ).
 
       WHEN 'FC_SUM'.
 
         sum_msg_grid( ).
 
     ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD weekend_status_grid.
+
+    DATA: lt_fcat   TYPE lvc_t_fcat,
+          ls_fcat   TYPE lvc_s_fcat,
+          ls_layout TYPE lvc_s_layo.
+
+    mo_grid->get_frontend_fieldcatalog( IMPORTING et_fieldcatalog = lt_fcat ).
+    mo_grid->get_frontend_layout( IMPORTING es_layout = ls_layout ).
+
+    CASE mv_hide_weekend.
+
+      WHEN 'X'.
+
+        mv_hide_weekend = ' '.
+
+        LOOP AT lt_fcat INTO ls_fcat.
+
+          ls_fcat-col_pos = sy-tabix.
+
+          IF ls_fcat-no_out = 'X' AND ls_fcat-fieldname <> 'SELECTED_LINES'.
+
+            ls_fcat-no_out = ' '.
+
+          ENDIF.
+
+          MODIFY lt_fcat FROM ls_fcat TRANSPORTING no_out col_pos.
+
+        ENDLOOP.
+
+      WHEN ' '.
+
+        mv_hide_weekend = 'X'.
+
+        LOOP AT lt_fcat INTO ls_fcat.
+
+          ls_fcat-col_pos = sy-tabix.
+
+          IF ls_fcat-seltext CS 'SUN' OR ls_fcat-seltext CS 'SAT'.
+
+            ls_fcat-no_out = 'X'.
+
+          ENDIF.
+
+          MODIFY lt_fcat FROM ls_fcat TRANSPORTING no_out col_pos.
+
+        ENDLOOP.
+
+    ENDCASE.
+
+    ls_layout-cwidth_opt = 'X'.
+
+    mo_grid->set_frontend_fieldcatalog( EXPORTING it_fieldcatalog = lt_fcat ).
+    mo_grid->set_frontend_layout( EXPORTING is_layout = ls_layout ).
 
   ENDMETHOD.
 
@@ -523,25 +555,9 @@ CLASS lcl_display IMPLEMENTATION.
 
   METHOD create_salv.
 
-    DATA: lo_salv      TYPE REF TO cl_salv_table,
-          lo_container TYPE REF TO cl_gui_custom_container.
-
-    DATA: lv_date          TYPE d,
-          lv_days_in_month TYPE t009b-butag,
-          lv_weekday       TYPE sc_day_txt,
-          lv_day_name      TYPE scrtext_m,
-          lv_day_num(2)    TYPE n,
-          ls_col_color     TYPE slis_specialcol_alv,
-          ls_salv_color    TYPE lvc_s_scol,
-          ls_output        TYPE ty_output,
-          lv_col_pos       TYPE i,
-          lv_fieldname     TYPE lvc_fname.
-
-    FIELD-SYMBOLS: <lv_weekend> TYPE any.
+    DATA: lo_container TYPE REF TO cl_gui_custom_container.
 
     CREATE OBJECT lo_container EXPORTING container_name = 'GS_SCR_110_CONTAINER'.
-
-    lv_date = iv_date.
 
     TRY.
 
@@ -550,20 +566,79 @@ CLASS lcl_display IMPLEMENTATION.
             r_container    = lo_container
             container_name = 'GS_SCR_110_CONTAINER'
           IMPORTING
-            r_salv_table   = lo_salv
+            r_salv_table   = mo_salv
           CHANGING
             t_table        = mt_output.
 
-        DATA(lo_columns) = lo_salv->get_columns( ).
+        set_columns( EXPORTING iv_curr_date = iv_date ).
+        set_buttons( ).
 
-        lo_columns->get_column( 'SELECT_LINES' )->set_visible( abap_false ).
-        lo_columns->get_column( 'OVERTIME' )->set_visible( abap_false ).
-        lo_columns->get_column( 'ROW_COLOR' )->set_visible( abap_false ).
+        DATA(lo_events) = mo_salv->get_event( ).
 
-        lo_columns->get_column( 'NAME' )->set_medium_text( 'Name' ).
-        lo_columns->get_column( 'PROJECT' )->set_medium_text( 'Project' ).
-        lo_columns->get_column( 'HOURS' )->set_medium_text( 'Hours' ).
-        lo_columns->get_column( 'DAYS' )->set_medium_text( 'Days' ).
+        SET HANDLER handle_salv_ucomm FOR lo_events.
+
+        CALL METHOD mo_salv->if_salv_gui_om_table_action~display.
+
+      CATCH cx_root INTO DATA(e_txt).
+        WRITE: / e_txt->get_text( ).
+    ENDTRY.
+
+    CALL SCREEN 110.
+
+  ENDMETHOD.
+
+  METHOD set_columns.
+
+    DATA: lv_date          TYPE d,
+          lv_days_in_month TYPE t009b-butag,
+          lv_weekday       TYPE sc_day_txt,
+          lv_day_name      TYPE scrtext_m,
+          lv_day_num(2)    TYPE n,
+          ls_salv_color    TYPE lvc_s_scol,
+          ls_output        TYPE ty_output,
+          lv_fieldname     TYPE lvc_fname,
+          lv_col_pos       TYPE i.
+
+    FIELD-SYMBOLS: <lv_weekend> TYPE any.
+
+    TRY.
+
+        DATA(lo_columns) = mo_salv->get_columns( ).
+
+        lo_columns->set_optimize( abap_true ).
+
+        lv_date = iv_curr_date.
+
+        DATA(lo_selection) = mo_salv->get_selections( ).
+
+        lo_selection->set_selection_mode( if_salv_c_selection_mode=>row_column ).
+
+        lo_columns->get_column( 'SELECT_LINES' )->set_technical( abap_true ).
+        lo_columns->get_column( 'OVERTIME' )->set_technical( abap_true ).
+
+        lo_columns->set_column_position(  columnname = 'NAME' position   = 1 ).
+        lo_columns->set_column_position(  columnname = 'PROJECT' position   = 2 ).
+        lo_columns->set_column_position(  columnname = 'HOURS' position   = 3 ).
+        lo_columns->set_column_position(  columnname = 'DAYS' position   = 4 ).
+
+        lv_col_pos = 5.
+
+        DATA(lo_column) = CAST cl_salv_column_table( lo_columns->get_column( 'NAME' ) ).
+
+        lo_column->set_medium_text( 'Name' ).
+        lo_column->set_key( ).
+
+        lo_column = CAST cl_salv_column_table( lo_columns->get_column( 'PROJECT' ) ).
+        lo_column->set_medium_text( 'Project' ).
+        lo_column->set_key( ).
+
+        lo_column = CAST cl_salv_column_table( lo_columns->get_column( 'HOURS' ) ).
+        lo_column->set_medium_text( 'Hours' ).
+        lo_column->set_key( ).
+
+        lo_column = CAST cl_salv_column_table( lo_columns->get_column( 'DAYS' ) ).
+        lo_column->set_medium_text( 'Days' ).
+        lo_column->set_key( ).
 
         CALL FUNCTION 'NUMBER_OF_DAYS_PER_MONTH_GET'
           EXPORTING
@@ -586,44 +661,6 @@ CLASS lcl_display IMPLEMENTATION.
 
           LOOP AT mt_output INTO ls_output.
 
-            CASE ls_output-overtime.
-
-              WHEN ' '.
-
-                ls_salv_color-fname = 'NAME'.
-                ls_salv_color-color-col = col_key.
-                ls_salv_color-color-int = 1.
-                ls_salv_color-color-inv = 0.
-                APPEND ls_salv_color TO ls_output-salv_color.
-                MODIFY mt_output FROM ls_output.
-                CLEAR ls_salv_color.
-
-                ls_salv_color-fname = 'PROJECT'.
-                ls_salv_color-color-col = col_key.
-                ls_salv_color-color-int = 1.
-                ls_salv_color-color-inv = 0.
-                APPEND ls_salv_color TO ls_output-salv_color.
-                MODIFY mt_output FROM ls_output.
-                CLEAR ls_salv_color.
-
-                ls_salv_color-fname = 'HOURS'.
-                ls_salv_color-color-col = col_key.
-                ls_salv_color-color-int = 1.
-                ls_salv_color-color-inv = 0.
-                APPEND ls_salv_color TO ls_output-salv_color.
-                MODIFY mt_output FROM ls_output.
-                CLEAR ls_salv_color.
-
-                ls_salv_color-fname = 'DAYS'.
-                ls_salv_color-color-col = col_key.
-                ls_salv_color-color-int = 1.
-                ls_salv_color-color-inv = 0.
-                APPEND ls_salv_color TO ls_output-salv_color.
-                MODIFY mt_output FROM ls_output.
-                CLEAR ls_salv_color.
-
-            ENDCASE.
-
             ASSIGN COMPONENT lv_fieldname OF STRUCTURE ls_output TO <lv_weekend>.
 
             IF ( lv_day_name CS 'SUN' OR lv_day_name CS 'SAT' ) AND <lv_weekend> IS NOT INITIAL.
@@ -631,43 +668,179 @@ CLASS lcl_display IMPLEMENTATION.
               ls_salv_color-fname = lv_fieldname.
               ls_salv_color-color-col = col_negative.
               ls_salv_color-color-int = 1.
-              ls_salv_color-color-inv = 0.
               APPEND ls_salv_color TO ls_output-salv_color.
               MODIFY mt_output FROM ls_output.
               CLEAR ls_salv_color.
+
+            ELSEIF <lv_weekend> IS INITIAL.
+
+              lo_column = CAST cl_salv_column_table( lo_columns->get_column( lv_fieldname ) ).
+              lo_column->set_zero( abap_false ).
 
             ENDIF.
 
           ENDLOOP.
 
-          lv_col_pos += 1.
-
           IF ( lv_weekday = 'SATURDAY' OR lv_weekday = 'SUNDAY' ) AND mv_hide_weekend IS NOT INITIAL.
 
             lo_columns->get_column( lv_fieldname )->set_medium_text( lv_day_name ).
             lo_columns->get_column( lv_fieldname )->set_visible( abap_false ).
+            lo_columns->set_column_position(  columnname = lv_fieldname position   = lv_col_pos ).
 
           ELSE.
 
             lo_columns->get_column( lv_fieldname )->set_medium_text( lv_day_name ).
+            lo_columns->set_column_position(  columnname = lv_fieldname position   = lv_col_pos ).
 
           ENDIF.
 
-
-
-          lv_date += 1.
+          lv_date    += 1.
+          lv_col_pos += 1.
 
         ENDDO.
 
         lo_columns->set_color_column( 'SALV_COLOR' ).
 
-        CALL METHOD lo_salv->if_salv_gui_om_table_action~display.
-
       CATCH cx_root INTO DATA(e_txt).
         WRITE: / e_txt->get_text( ).
     ENDTRY.
 
-    CALL SCREEN 110.
+  ENDMETHOD.
+
+  METHOD set_buttons.
+
+    DATA(lo_functions) = mo_salv->get_functions( ).
+
+    lo_functions->set_all( abap_true ).
+
+    INCLUDE <icon>.
+
+    TRY.
+
+        lo_functions->add_function(
+          name     = 'FC_SHOW'
+          icon     = CONV string( icon_display )
+          text     = `Show`
+          tooltip  = `Show / Hide Weekends`
+          position = if_salv_c_function_position=>right_of_salv_functions ).
+
+      CATCH cx_salv_existing cx_salv_wrong_call.
+
+    ENDTRY.
+
+    TRY.
+
+        lo_functions->add_function(
+          name     = 'FC_SUM'
+          icon     = CONV string( icon_sum )
+          text     = `Sum Data`
+          tooltip  = `Sum of days and hours of selected rows`
+          position = if_salv_c_function_position=>right_of_salv_functions ).
+
+      CATCH cx_salv_existing cx_salv_wrong_call.
+
+    ENDTRY.
+
+  ENDMETHOD.
+
+  METHOD handle_salv_ucomm.
+
+    CASE e_salv_function.
+
+      WHEN 'FC_SHOW'.
+
+        weekend_status_salv( ).
+
+      WHEN 'FC_SUM'.
+
+        sum_msg_salv( ).
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD weekend_status_salv.
+
+    DATA: lv_index   TYPE i.
+
+    FIELD-SYMBOLS <lS_column> TYPE salv_s_column_ref.
+    FIELD-SYMBOLS <lt_columns_ref> TYPE salv_t_column_ref.
+    CASE mv_hide_weekend.
+
+      WHEN 'X'.
+
+        mv_hide_weekend = ' '.
+      WHEN ' '.
+
+        mv_hide_weekend = 'X'.
+    ENDCASE.
+
+    DATA(lt_cols) = mo_salv->get_columns( )->get( ).
+
+    LOOP AT lt_cols ASSIGNING <ls_column>.
+
+      DATA(lv_tabix) = sy-tabix.
+
+      IF <lS_column>-columnname(2) = 'D_'.
+
+        DATA(lv_day) = CONV numc2( <lS_column>-columnname+2(2) ).
+        lv_tabix = lv_day + 4.
+
+      ENDIF.
+
+      mo_salv->get_columns( )->set_column_position( columnname = <lS_column>-columnname
+      position = lv_tabix ).
+
+      CASE mv_hide_weekend.
+
+        WHEN abap_false.
+
+          IF <ls_column>-r_column->get_medium_text( ) CS 'SUN' OR <ls_column>-r_column->get_medium_text( ) CS 'SAT'.
+
+            <ls_column>-r_column->set_visible( abap_true ).
+
+          ENDIF.
+
+        WHEN abap_true.
+
+          IF <ls_column>-r_column->get_medium_text( ) CS 'SUN' OR <ls_column>-r_column->get_medium_text( ) CS 'SAT'.
+
+            <ls_column>-r_column->set_visible( abap_false ).
+
+          ENDIF.
+
+      ENDCASE.
+
+    ENDLOOP.
+
+    mo_salv->get_columns( )->set_optimize( ).
+    mo_salv->refresh( s_stable = VALUE lvc_s_stbl( col = 'X' ) ).
+
+  ENDMETHOD.
+
+  METHOD sum_msg_salv.
+
+    DATA: lv_sum_hours TYPE p DECIMALS 2,
+          lv_sum_days  TYPE p DECIMALS 2.
+
+    DATA(lt_cols) = mo_salv->get_selections( )->get_selected_rows( ).
+
+    LOOP AT lt_cols ASSIGNING FIELD-SYMBOL(<ls_cols>).
+
+      DATA(lv_index) = <ls_cols>.
+
+      READ TABLE mt_output ASSIGNING FIELD-SYMBOL(<ls_output>) INDEX lv_index.
+
+      lv_sum_hours += <ls_output>-hours.
+      lv_sum_days  += <ls_output>-days.
+
+    ENDLOOP.
+
+    IF lv_sum_days IS NOT INITIAL OR lv_sum_hours IS NOT INITIAL.
+
+      MESSAGE 'Sum of days is: ' && lv_sum_days && '. ' && 'Sum of hours is: ' && lv_sum_hours && '.' TYPE 'I'.
+
+    ENDIF.
 
   ENDMETHOD.
 
