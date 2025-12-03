@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="utf-16"?>
+<abapGit version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <TDLINES>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>FOOTER</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>PF</TDFORMAT>
+     <TDLINE>&amp;sy-datum&amp; / &amp;sy-uzeit&amp;,,Page &amp;page&amp; / &amp;SAPSCRIPT-FORMPAGES(C)&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>HEADER</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>*</TDFORMAT>
+     <TDLINE>&amp;gs_t001-butxt&amp;, &amp;gs_t001-ort01&amp;, &amp;gs_t001-land1&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>LOGO</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BITMAP &apos;COMPANY_LOGO&apos; OBJECT GRAPHICS ID BMAP TYPE BCOL</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>MAIN</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>TABLE_HEADER</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;0&apos;   MM YPOS &apos;0&apos; MM WIDTH &apos;15&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;15&apos;  MM YPOS &apos;0&apos; MM WIDTH &apos;20&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;35&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;17.5&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;52.5&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;20&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;72.5&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;26&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;98.5&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;25.5&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;124&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;30.2&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/:</TDFORMAT>
+     <TDLINE>BOX XPOS &apos;154.2&apos; MM YPOS &apos;0&apos; MM WIDTH &apos;20&apos; MM HEIGHT &apos;10&apos; MM FRAME 01 TW INTENSITY 15</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>TABLE_COLUMNS</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P2</TDFORMAT>
+     <TDLINE>&lt;B1&gt;&amp;GS_HEADER-ebelp&amp;,,&amp;GS_HEADER-txz01&amp;,,&amp;GS_HEADER-matnr&amp;,,</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>&amp;GS_HEADER-maktx&amp;,,&amp;GS_HEADER-menge&amp;,,&amp;GS_HEADER-netpr&amp;,,</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>&amp;GS_HEADER-netpr_menge&amp;,,&amp;GS_HEADER-zzkp_comment&amp;&lt;/&gt;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>TABLE_CELLS</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>TABLE_VALUES</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>PT</TDFORMAT>
+     <TDLINE>&lt;B1&gt;&amp;GS_output-ebelp(Z)&amp;&lt;/&gt;,,&amp;GS_output-txz01&amp;,,&amp;GS_output-matnr&amp;,,</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>&amp;GS_output-maktx&amp;,,&amp;GS_output-menge(C)&amp;,,&amp;GS_output-netpr(I)&amp;,,</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>&amp;GS_output-netpr_menge(I)&amp;,,&amp;GS_output-zzkp_comment&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>TABLE_TOTAL</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>TT</TDFORMAT>
+     <TDLINE>&lt;B1&gt;Total&lt;/&gt;,,&amp;gv_total&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/=</TDFORMAT>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/=</TDFORMAT>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/E</TDFORMAT>
+     <TDLINE>READ_TEXT</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>RT</TDFORMAT>
+     <TDLINE>&amp;gs_lines-tdline&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>PO</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Purchase Order:,,&lt;B1&gt;&amp;gs_ekko-ebeln&amp;&lt;/&gt;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Created on:,,&amp;gs_ekko-aedat&amp;               Created by:</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>    &amp;gs_ekko-ernam&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Terms Of Payment:,,&amp;gs_ekko-zterm&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Salesperson:,,&amp;gs_ekko-verkf&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Telephone:,,&amp;gs_ekko-telf1&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>/W</TDFORMAT>
+     <TDLINE>VENDOR</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Vendor:,,&amp;gs_ekko-lifnr&amp;, &amp;gs_lfa1-name1&amp;, &amp;gs_lfa1-ort01&amp;,</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>=</TDFORMAT>
+     <TDLINE>&amp;gs_lfa1-ort02&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Currency:,,&amp;gs_ekko-waers&amp;</TDLINE>
+    </TLINE>
+    <TLINE>
+     <TDFORMAT>P1</TDFORMAT>
+     <TDLINE>Exchange Rate:,,&amp;gs_ekko-wkurs(C)&amp;</TDLINE>
+    </TLINE>
+   </TDLINES>
+  </asx:values>
+ </asx:abap>
+</abapGit>
