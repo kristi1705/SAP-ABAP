@@ -68,6 +68,12 @@ TYPES: BEGIN OF ty_header,
        END OF ty_header,
        tt_header TYPE STANDARD TABLE OF ty_header.
 
+TYPES: BEGIN OF ty_split_text,
+         fname TYPE fieldname,
+         text  TYPE swastrtab-str,
+       END OF ty_split_text,
+       tt_split_text TYPE STANDARD TABLE OF ty_split_text.
+
 DATA: gt_tline  TYPE STANDARD TABLE OF tline,
       gt_header TYPE tt_header,
       gs_header TYPE ty_header,
@@ -252,6 +258,37 @@ FORM table_header.
 
 ENDFORM.
 
+FORM split_text USING uv_fieldname TYPE fieldname
+                      uv_input TYPE string
+                      uv_length TYPE i
+                 CHANGING cv_max_rows TYPE i
+                          ct_split_text TYPE tt_split_text.
+
+  DATA: lt_lines        TYPE TABLE OF swastrtab.
+
+  CALL FUNCTION 'SWA_STRING_SPLIT'
+    EXPORTING
+      input_string         = uv_input
+      max_component_length = uv_length
+    TABLES
+      string_components    = lt_lines.
+
+  IF cv_max_rows < lines( lt_lines ).
+
+    cv_max_rows = lines( lt_lines ).
+
+  ENDIF.
+
+  LOOP AT lt_lines ASSIGNING FIELD-SYMBOL(<ls_lines>).
+
+
+    APPEND VALUE #( fname = uv_fieldname
+                    text  = <ls_lines>-str ) TO ct_split_text.
+
+  ENDLOOP.
+
+ENDFORM.
+
 FORM table_cells.
 
   DATA: lv_max_rows     TYPE i,
@@ -262,7 +299,8 @@ FORM table_cells.
         lv_cmd          TYPE string,
         lv_win_height   TYPE p DECIMALS 1,
         lt_lines        TYPE TABLE OF swastrtab,
-        lv_display_line TYPE i.
+        lv_display_line TYPE i,
+        lt_split_text   TYPE tt_split_text.
 
   lv_ypos = 10.
   lv_win_height = '126.2'.
@@ -275,340 +313,417 @@ FORM table_cells.
     lv_tabix = sy-tabix.
     DATA(lv_ebelp) = gs_output-ebelp.
 
-    CALL FUNCTION 'SWA_STRING_SPLIT'
-      EXPORTING
-        input_string         = gs_output-txz01
-        max_component_length = 8
-      TABLES
-        string_components    = lt_lines.
-    IF sy-subrc = 0.
+    CLEAR: lv_max_rows, lt_split_text.
 
-      DATA(lv_rows) = lines( lt_lines ).
+    PERFORM split_text
+      USING
+        'TXZ01'
+        gs_output-txz01
+        8
+      CHANGING
+        lv_max_rows
+        lt_split_text.
 
-      IF lv_max_rows IS INITIAL.
-        lv_max_rows = lv_rows.
-      ENDIF.
+    PERFORM split_text
+      USING
+        'MATNR'
+        gs_output-matnr
+        6
+      CHANGING
+        lv_max_rows
+        lt_split_text.
 
-      lv_rows = lines( lt_lines ).
+    PERFORM split_text
+      USING
+        'MAKTX'
+        gs_output-maktx
+        8
+      CHANGING
+        lv_max_rows
+        lt_split_text.
 
-      IF lv_max_rows < lv_rows.
+    PERFORM split_text
+      USING
+        'ZZKP_COMMENT'
+        gs_output-zzkp_comment
+        6
+      CHANGING
+        lv_max_rows
+        lt_split_text.
 
-        lv_max_rows = lv_rows.
+    lv_max_rows -= 1.
+    DO lv_max_rows TIMES.
 
-      ENDIF.
+      INSERT INITIAL LINE INTO gt_output INDEX lv_tabix + sy-index.
 
-      IF lv_rows = 1.
+    ENDDO.
 
-        CLEAR lt_lines.
 
-      ELSE.
+    LOOP AT lt_split_text ASSIGNING FIELD-SYMBOL(<ls_split_text>).
 
-        lv_index = 1.
+      AT NEW fname.
 
-        LOOP AT lt_lines INTO DATA(ls_lines).
+        CLEAR lv_index.
 
-          IF sy-tabix  = 1.
+      ENDAT.
 
-            CLEAR gs_output.
-            gs_output-txz01 = ls_lines-str.
-            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING txz01.
+      IF lv_index IS INITIAL.
 
-            CONTINUE.
+        ASSIGN COMPONENT <ls_split_text>-fname OF STRUCTURE gs_output TO FIELD-SYMBOL(<lv_cell>).
+        <lv_cell> = <ls_split_text>-text.
 
-          ENDIF.
-
-          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
-
-          IF sy-subrc <> 0.
-
-            CLEAR gs_output.
-            gs_output-txz01 = ls_lines-str.
-            gs_output-new_row = abap_true.
-            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-          ELSE.
-
-            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
-
-              CLEAR gs_output.
-              gs_output-txz01 = ls_lines-str.
-              gs_output-new_row = abap_true.
-              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-            ELSEIF gs_output-new_row = abap_true.
-
-              CLEAR gs_output.
-              gs_output-txz01 = ls_lines-str.
-              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING txz01.
-
-            ENDIF.
-
-          ENDIF.
-
-          lv_index += 1.
-
-        ENDLOOP.
-
-      ENDIF.
-
-      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
-
-      lv_index = 0.
-
-    ENDIF.
-
-    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
-
-    CALL FUNCTION 'SWA_STRING_SPLIT'
-      EXPORTING
-        input_string         = gs_output-matnr
-        max_component_length = 6
-      TABLES
-        string_components    = lt_lines.
-    IF sy-subrc = 0.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows IS INITIAL.
-        lv_max_rows = lv_rows.
-      ENDIF.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows < lv_rows.
-
-        lv_max_rows = lv_rows.
-
-      ENDIF.
-
-      IF lv_rows = 1.
-
-        CLEAR lt_lines.
+        MODIFY gt_output FROM gs_output.
 
       ELSE.
 
-        lv_index = 1.
+        READ TABLE gt_output ASSIGNING FIELD-SYMBOL(<ls_output>) INDEX lv_tabix + lv_index.
 
-        LOOP AT lt_lines INTO ls_lines.
+        IF sy-subrc = 0.
+          ASSIGN COMPONENT <ls_split_text>-fname OF STRUCTURE <ls_output> TO <lv_cell>.
+          <lv_cell> = <ls_split_text>-text.
 
-          IF sy-tabix  = 1.
-
-            CLEAR gs_output.
-            gs_output-matnr = ls_lines-str.
-            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING matnr.
-
-            CONTINUE.
-
-          ENDIF.
-
-          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
-
-          IF sy-subrc <> 0.
-
-            CLEAR gs_output.
-            gs_output-matnr = ls_lines-str.
-            gs_output-new_row = abap_true.
-            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-          ELSE.
-
-            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
-
-              CLEAR gs_output.
-              gs_output-matnr = ls_lines-str.
-              gs_output-new_row = abap_true.
-              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-            ELSEIF gs_output-new_row = abap_true.
-
-              CLEAR gs_output.
-              gs_output-matnr = ls_lines-str.
-              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING matnr.
-
-            ENDIF.
-
-          ENDIF.
-
-          lv_index += 1.
-
-        ENDLOOP.
-
+        ENDIF.
       ENDIF.
 
-      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
-
-      lv_index = 0.
-
-    ENDIF.
-
-    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
-
-    CALL FUNCTION 'SWA_STRING_SPLIT'
-      EXPORTING
-        input_string         = gs_output-maktx
-        max_component_length = 8
-      TABLES
-        string_components    = lt_lines.
-    IF sy-subrc = 0.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows IS INITIAL.
-        lv_max_rows = lv_rows.
-      ENDIF.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows < lv_rows.
-
-        lv_max_rows = lv_rows.
-
-      ENDIF.
-
-      IF lv_rows = 1.
-
-        CLEAR lt_lines.
-
-      ELSE.
-
-        lv_index = 1.
-
-        LOOP AT lt_lines INTO ls_lines.
-
-          IF sy-tabix  = 1.
-
-            CLEAR gs_output.
-            gs_output-maktx = ls_lines-str.
-            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING maktx.
-
-            CONTINUE.
-
-          ENDIF.
-
-          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
-
-          IF sy-subrc <> 0.
-
-            CLEAR gs_output.
-            gs_output-maktx = ls_lines-str.
-            gs_output-new_row = abap_true.
-            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-          ELSE.
-
-            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
-
-              CLEAR gs_output.
-              gs_output-maktx = ls_lines-str.
-              gs_output-new_row = abap_true.
-              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-            ELSEIF gs_output-new_row = abap_true.
-
-              CLEAR gs_output.
-              gs_output-maktx = ls_lines-str.
-              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING maktx.
-
-            ENDIF.
-
-          ENDIF.
-
-          lv_index += 1.
-
-        ENDLOOP.
-
-      ENDIF.
-
-      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
-
-      lv_index = 0.
-
-    ENDIF.
-
-    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
-
-    CALL FUNCTION 'SWA_STRING_SPLIT'
-      EXPORTING
-        input_string         = gs_output-zzkp_comment
-        max_component_length = 6
-      TABLES
-        string_components    = lt_lines.
-    IF sy-subrc = 0.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows IS INITIAL.
-        lv_max_rows = lv_rows.
-      ENDIF.
-
-      lv_rows = lines( lt_lines ).
-
-      IF lv_max_rows < lv_rows.
-
-        lv_max_rows = lv_rows.
-
-      ENDIF.
-
-      IF lv_rows = 1.
-
-        CLEAR lt_lines.
-
-      ELSE.
-
-        lv_index = 1.
-
-        LOOP AT lt_lines INTO ls_lines.
-
-          IF sy-tabix  = 1.
-
-            CLEAR gs_output.
-            gs_output-zzkp_comment = ls_lines-str.
-            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING zzkp_comment.
-
-            CONTINUE.
-
-          ENDIF.
-
-          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
-
-          IF sy-subrc <> 0.
-
-            CLEAR gs_output.
-            gs_output-zzkp_comment = ls_lines-str.
-            gs_output-new_row = abap_true.
-            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-          ELSE.
-
-            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
-
-              CLEAR gs_output.
-              gs_output-zzkp_comment = ls_lines-str.
-              gs_output-new_row = abap_true.
-              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
-
-            ELSEIF gs_output-new_row = abap_true.
-
-              CLEAR gs_output.
-              gs_output-zzkp_comment = ls_lines-str.
-              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING zzkp_comment.
-
-            ENDIF.
-
-          ENDIF.
-
-          lv_index += 1.
-
-        ENDLOOP.
-
-      ENDIF.
-
-      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
-
-      lv_index = 0.
-
-    ENDIF.
-
+      lv_index += 1.
+
+    ENDLOOP.
+
+*
+*    CALL FUNCTION 'SWA_STRING_SPLIT'
+*      EXPORTING
+*        input_string         = gs_output-txz01
+*        max_component_length = 8
+*      TABLES
+*        string_components    = lt_lines.
+*    IF sy-subrc = 0.
+*
+*      DATA(lv_rows) = lines( lt_lines ).
+*
+*      IF lv_max_rows IS INITIAL.
+*        lv_max_rows = lv_rows.
+*      ENDIF.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows < lv_rows.
+*
+*        lv_max_rows = lv_rows.
+*
+*      ENDIF.
+*
+*      IF lv_rows = 1.
+*
+*        CLEAR lt_lines.
+*
+*      ELSE.
+*
+*        lv_index = 1.
+*
+*        LOOP AT lt_lines INTO DATA(ls_lines).
+*
+*          IF sy-tabix  = 1.
+*
+*            CLEAR gs_output.
+*            gs_output-txz01 = ls_lines-str.
+*            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING txz01.
+*
+*            CONTINUE.
+*
+*          ENDIF.
+*
+*          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
+*
+*          IF sy-subrc <> 0.
+*
+*            CLEAR gs_output.
+*            gs_output-txz01 = ls_lines-str.
+*            gs_output-new_row = abap_true.
+*            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*          ELSE.
+*
+*            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
+*
+*              CLEAR gs_output.
+*              gs_output-txz01 = ls_lines-str.
+*              gs_output-new_row = abap_true.
+*              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*            ELSEIF gs_output-new_row = abap_true.
+*
+*              CLEAR gs_output.
+*              gs_output-txz01 = ls_lines-str.
+*              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING txz01.
+*
+*            ENDIF.
+*
+*          ENDIF.
+*
+*          lv_index += 1.
+*
+*        ENDLOOP.
+*
+*      ENDIF.
+*
+*      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
+*
+*      lv_index = 0.
+*
+*    ENDIF.
+*
+*    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
+*
+*    CALL FUNCTION 'SWA_STRING_SPLIT'
+*      EXPORTING
+*        input_string         = gs_output-matnr
+*        max_component_length = 6
+*      TABLES
+*        string_components    = lt_lines.
+*    IF sy-subrc = 0.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows IS INITIAL.
+*        lv_max_rows = lv_rows.
+*      ENDIF.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows < lv_rows.
+*
+*        lv_max_rows = lv_rows.
+*
+*      ENDIF.
+*
+*      IF lv_rows = 1.
+*
+*        CLEAR lt_lines.
+*
+*      ELSE.
+*
+*        lv_index = 1.
+*
+*        LOOP AT lt_lines INTO ls_lines.
+*
+*          IF sy-tabix  = 1.
+*
+*            CLEAR gs_output.
+*            gs_output-matnr = ls_lines-str.
+*            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING matnr.
+*
+*            CONTINUE.
+*
+*          ENDIF.
+*
+*          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
+*
+*          IF sy-subrc <> 0.
+*
+*            CLEAR gs_output.
+*            gs_output-matnr = ls_lines-str.
+*            gs_output-new_row = abap_true.
+*            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*          ELSE.
+*
+*            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
+*
+*              CLEAR gs_output.
+*              gs_output-matnr = ls_lines-str.
+*              gs_output-new_row = abap_true.
+*              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*            ELSEIF gs_output-new_row = abap_true.
+*
+*              CLEAR gs_output.
+*              gs_output-matnr = ls_lines-str.
+*              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING matnr.
+*
+*            ENDIF.
+*
+*          ENDIF.
+*
+*          lv_index += 1.
+*
+*        ENDLOOP.
+*
+*      ENDIF.
+*
+*      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
+*
+*      lv_index = 0.
+*
+*    ENDIF.
+*
+*    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
+*
+*    CALL FUNCTION 'SWA_STRING_SPLIT'
+*      EXPORTING
+*        input_string         = gs_output-maktx
+*        max_component_length = 8
+*      TABLES
+*        string_components    = lt_lines.
+*    IF sy-subrc = 0.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows IS INITIAL.
+*        lv_max_rows = lv_rows.
+*      ENDIF.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows < lv_rows.
+*
+*        lv_max_rows = lv_rows.
+*
+*      ENDIF.
+*
+*      IF lv_rows = 1.
+*
+*        CLEAR lt_lines.
+*
+*      ELSE.
+*
+*        lv_index = 1.
+*
+*        LOOP AT lt_lines INTO ls_lines.
+*
+*          IF sy-tabix  = 1.
+*
+*            CLEAR gs_output.
+*            gs_output-maktx = ls_lines-str.
+*            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING maktx.
+*
+*            CONTINUE.
+*
+*          ENDIF.
+*
+*          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
+*
+*          IF sy-subrc <> 0.
+*
+*            CLEAR gs_output.
+*            gs_output-maktx = ls_lines-str.
+*            gs_output-new_row = abap_true.
+*            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*          ELSE.
+*
+*            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
+*
+*              CLEAR gs_output.
+*              gs_output-maktx = ls_lines-str.
+*              gs_output-new_row = abap_true.
+*              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*            ELSEIF gs_output-new_row = abap_true.
+*
+*              CLEAR gs_output.
+*              gs_output-maktx = ls_lines-str.
+*              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING maktx.
+*
+*            ENDIF.
+*
+*          ENDIF.
+*
+*          lv_index += 1.
+*
+*        ENDLOOP.
+*
+*      ENDIF.
+*
+*      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
+*
+*      lv_index = 0.
+*
+*    ENDIF.
+*
+*    READ TABLE gt_output INTO gs_output INDEX lv_tabix.
+*
+*    CALL FUNCTION 'SWA_STRING_SPLIT'
+*      EXPORTING
+*        input_string         = gs_output-zzkp_comment
+*        max_component_length = 6
+*      TABLES
+*        string_components    = lt_lines.
+*    IF sy-subrc = 0.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows IS INITIAL.
+*        lv_max_rows = lv_rows.
+*      ENDIF.
+*
+*      lv_rows = lines( lt_lines ).
+*
+*      IF lv_max_rows < lv_rows.
+*
+*        lv_max_rows = lv_rows.
+*
+*      ENDIF.
+*
+*      IF lv_rows = 1.
+*
+*        CLEAR lt_lines.
+*
+*      ELSE.
+*
+*        lv_index = 1.
+*
+*        LOOP AT lt_lines INTO ls_lines.
+*
+*          IF sy-tabix  = 1.
+*
+*            CLEAR gs_output.
+*            gs_output-zzkp_comment = ls_lines-str.
+*            MODIFY gt_output FROM gs_output INDEX lv_tabix TRANSPORTING zzkp_comment.
+*
+*            CONTINUE.
+*
+*          ENDIF.
+*
+*          READ TABLE gt_output INTO gs_output INDEX lv_tabix + lv_index.
+*
+*          IF sy-subrc <> 0.
+*
+*            CLEAR gs_output.
+*            gs_output-zzkp_comment = ls_lines-str.
+*            gs_output-new_row = abap_true.
+*            INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*          ELSE.
+*
+*            IF gs_output-new_row = abap_false AND gs_output-ebelp <> lv_ebelp.
+*
+*              CLEAR gs_output.
+*              gs_output-zzkp_comment = ls_lines-str.
+*              gs_output-new_row = abap_true.
+*              INSERT gs_output INTO gt_output INDEX lv_tabix + lv_index.
+*
+*            ELSEIF gs_output-new_row = abap_true.
+*
+*              CLEAR gs_output.
+*              gs_output-zzkp_comment = ls_lines-str.
+*              MODIFY gt_output FROM gs_output INDEX lv_tabix + lv_index TRANSPORTING zzkp_comment.
+*
+*            ENDIF.
+*
+*          ENDIF.
+*
+*          lv_index += 1.
+*
+*        ENDLOOP.
+*
+*      ENDIF.
+*
+*      CLEAR: lv_rows, lt_lines, ls_lines, gs_output.
+*
+*      lv_index = 0.
+*
+*    ENDIF.
+    lv_max_rows += 1.
     lv_height = '5.23' * lv_max_rows.
 
     CALL FUNCTION 'WRITE_FORM'
