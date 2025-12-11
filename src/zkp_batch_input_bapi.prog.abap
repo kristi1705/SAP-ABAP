@@ -6,6 +6,10 @@ REPORT zkp_batch_input_bapi
 * If you have own auth.-checks you can use include bdcrecx1 instead.
 *include bdcrecx1_s.
 
+PARAMETERS: p_binput RADIOBUTTON GROUP rbg1 DEFAULT 'X',
+            p_bapi   RADIOBUTTON GROUP rbg1,
+            p_file   TYPE ibipparms-path.
+
 CLASS lcl_binput_bapi DEFINITION.
 
   PUBLIC SECTION.
@@ -17,14 +21,13 @@ CLASS lcl_binput_bapi DEFINITION.
            END OF ty_ekpo,
            tt_ekpo TYPE STANDARD TABLE OF ty_ekpo.
 
-    DATA: mt_ekpo TYPE tt_ekpo,
-          ms_ekpo TYPE ty_ekpo.
+    DATA: mt_ekpo TYPE tt_ekpo.
 
-    METHODS: execute IMPORTING iv_choice TYPE i iv_file TYPE ibipparms-path.
+    METHODS: execute IMPORTING iv_choice TYPE abap_bool iv_file TYPE ibipparms-path.
 
-    METHODS: convert_data IMPORTING iv_fpath TYPE ibipparms-path.
+    METHODS: upload_excel_data IMPORTING iv_fpath TYPE ibipparms-path.
 
-    METHODS: batch_input IMPORTING iv_path TYPE ibipparms-path, bapi IMPORTING iv_path TYPE ibipparms-path.
+    METHODS: batch_input, bapi.
 
 ENDCLASS.
 
@@ -32,21 +35,23 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
 
   METHOD execute.
 
+    upload_excel_data( EXPORTING iv_fpath = iv_file ).
+
     CASE iv_choice.
 
-      WHEN 1.
+      WHEN abap_true.
 
-        batch_input( EXPORTING iv_path = iv_file ).
+        batch_input( ).
 
-      WHEN 2.
+      WHEN abap_false.
 
-        bapi( EXPORTING iv_path = iv_file ).
+        bapi( ).
 
     ENDCASE.
 
   ENDMETHOD.
 
-  METHOD convert_data.
+  METHOD upload_excel_data.
 
     DATA: lt_data     TYPE solix_tab,
           lv_filepath TYPE string,
@@ -134,78 +139,79 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
 
   METHOD batch_input.
 
-    DATA: lt_bdcdata TYPE STANDARD TABLE OF bdcdata,
-          lt_messtab TYPE STANDARD TABLE OF bdcmsgcoll.
+    DATA: lt_bdcdata  TYPE STANDARD TABLE OF bdcdata,
+          lt_messtab  TYPE STANDARD TABLE OF bdcmsgcoll,
+          lt_messages TYPE esp1_message_tab_type,
+          ls_options  TYPE ctu_params.
 
-    convert_data( EXPORTING iv_fpath = iv_path ).
+    LOOP AT mt_ekpo INTO DATA(ms_ekpo) GROUP BY ( ebeln = ms_ekpo-ebeln ) ASSIGNING FIELD-SYMBOL(<lg_group>).
 
-    LOOP AT mt_ekpo INTO ms_ekpo GROUP BY ( ebeln = ms_ekpo-ebeln ) ASSIGNING FIELD-SYMBOL(<gt_group>).
+      SET PARAMETER ID 'BES' FIELD <lg_group>.
 
-      CLEAR lt_bdcdata.
+      lt_bdcdata = VALUE #( ( program = 'SAPMM06E' dynpro = '0105' dynbegin = 'X' )
+                            ( fnam = 'BDC_OKCODE' fval = '/00' ) ).
 
-      APPEND VALUE #( program = 'SAPMM06E' dynpro = '0105' dynbegin = 'X' ) TO lt_bdcdata.
+      LOOP AT GROUP <lg_group> ASSIGNING FIELD-SYMBOL(<ls_group>).
 
-      APPEND VALUE #( fnam = 'BDC_CURSOR' fval = 'RM06E-BSTNR' ) TO lt_bdcdata.
-
-      APPEND VALUE #( fnam = 'BDC_OKCODE' fval = '/00' ) TO lt_bdcdata.
-
-      APPEND VALUE #( fnam = 'RM06E-BSTNR' fval = <gt_group>-ebeln ) TO lt_bdcdata.
-
-      LOOP AT GROUP <gt_group> ASSIGNING FIELD-SYMBOL(<gs_group>).
-
-        APPEND VALUE #( program = 'SAPMM06E' dynpro = '0120' dynbegin = 'X' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'BDC_CURSOR' fval = 'RM06E-EBELP' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'BDC_OKCODE' fval = '/00' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'RM06E-EBELP' fval =  <gs_group>-ebelp ) TO lt_bdcdata.
-
-        APPEND VALUE #( program = 'SAPMM06E' dynpro = '0120' dynbegin = 'X' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'BDC_CURSOR' fval =  'EKPO-TXZ01(01)' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'BDC_OKCODE' fval =  '/00' ) TO lt_bdcdata.
-
-        APPEND VALUE #( fnam = 'EKPO-TXZ01(01)' fval =  <gs_group>-txz01 ) TO lt_bdcdata.
+        lt_bdcdata = VALUE #( BASE lt_bdcdata
+                             ( program = 'SAPMM06E'       dynpro = '0120' dynbegin = 'X' )
+                             ( fnam    = 'BDC_OKCODE'     fval   = '/00' )
+                             ( fnam    = 'RM06E-EBELP'    fval   =  <ls_group>-ebelp )
+                             ( program = 'SAPMM06E'       dynpro = '0120' dynbegin = 'X' )
+                             ( fnam    = 'BDC_OKCODE'     fval   =  '/00' )
+                             ( fnam    = 'EKPO-TXZ01(01)' fval   = <ls_group>-txz01 ) ).
 
       ENDLOOP.
 
       APPEND VALUE #( fnam = 'BDC_OKCODE' fval = '=BU' ) TO lt_bdcdata.
 
-      CALL TRANSACTION 'ME22' USING lt_bdcdata MODE 'E' UPDATE 'S' MESSAGES INTO lt_messtab.
+      ls_options-dismode = 'N'.
+      ls_options-updmode = 'S'.
+
+      CALL TRANSACTION 'ME22' USING lt_bdcdata OPTIONS FROM ls_options MESSAGES INTO lt_messtab.
 
     ENDLOOP.
+
+    LOOP AT lt_messtab ASSIGNING FIELD-SYMBOL(<ls_messtab>).
+
+      APPEND VALUE #( msgid = <ls_messtab>-msgid
+                      msgty = <ls_messtab>-msgtyp
+                      msgno = <ls_messtab>-msgnr
+                      msgv1 = |{ <ls_messtab>-msgv1 }{ <ls_messtab>-msgv2 }{ <ls_messtab>-msgv3 }{ <ls_messtab>-msgv4 }| ) TO lt_messages.
+
+    ENDLOOP.
+
+    CALL FUNCTION 'C14Z_MESSAGES_SHOW_AS_POPUP'
+      TABLES
+        i_message_tab = lt_messages.
 
   ENDMETHOD.
 
   METHOD bapi.
 
-    DATA: ls_po           TYPE bapimepoheader-po_number,
+    DATA: lv_po           TYPE bapimepoheader-po_number,
           ls_po_header    TYPE bapimepoheader,
           ls_po_headerx   TYPE bapimepoheaderx,
-          ls_return       TYPE  bapiret2,
+          ls_return       TYPE bapiret2,
           lt_return       TYPE STANDARD TABLE OF bapiret2,
           lt_item         TYPE STANDARD TABLE OF bapimepoitem,
           lt_itemx        TYPE STANDARD TABLE OF bapimepoitemx,
           lt_extensionin  TYPE STANDARD TABLE OF bapiparex,
           ls_te_mepoitem  TYPE bapi_te_mepoitem,
-          ls_te_mepoitemx TYPE bapi_te_mepoitemx.
+          ls_te_mepoitemx TYPE bapi_te_mepoitemx,
+          lt_messages     TYPE esp1_message_tab_type.
 
-    convert_data( EXPORTING iv_fpath = iv_path ).
+    LOOP AT mt_ekpo INTO DATA(ms_ekpo) GROUP BY ( ebeln = ms_ekpo-ebeln ) ASSIGNING FIELD-SYMBOL(<lg_group>).
 
-    LOOP AT mt_ekpo INTO ms_ekpo GROUP BY ( ebeln = ms_ekpo-ebeln ) ASSIGNING FIELD-SYMBOL(<lt_group>).
-
-      ls_po = <lt_group>-ebeln.
-      ls_po_header-po_number = <lt_group>-ebeln.
+      lv_po = <lg_group>-ebeln.
+      ls_po_header-po_number = <lg_group>-ebeln.
       ls_po_headerx-po_number = abap_true.
 
-      LOOP AT GROUP <lt_group> ASSIGNING FIELD-SYMBOL(<ls_group>).
+      LOOP AT GROUP <lg_group> ASSIGNING FIELD-SYMBOL(<ls_group>).
 
         APPEND VALUE #( po_item = <ls_group>-ebelp ) TO lt_item.
 
         APPEND VALUE #( po_item = <ls_group>-ebelp po_itemx = abap_true ) TO lt_itemx.
-
 
         ls_te_mepoitem-po_item = <ls_group>-ebelp.
         ls_te_mepoitem-zzkp_comment = <ls_group>-txz01.
@@ -224,7 +230,7 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
 
       CALL FUNCTION 'BAPI_PO_CHANGE'
         EXPORTING
-          purchaseorder = ls_po
+          purchaseorder = lv_po
           poheader      = ls_po_header
           poheaderx     = ls_po_headerx
         TABLES
@@ -233,34 +239,48 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
           poitemx       = lt_itemx
           extensionin   = lt_extensionin.
 
-      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
-        EXPORTING
-          wait   = abap_true
-        IMPORTING
-          return = ls_return.
+      LOOP AT lt_return ASSIGNING FIELD-SYMBOL(<ls_return>).
 
-      CLEAR: ls_po, ls_po_header, ls_po_headerx, ls_te_mepoitem.
+        IF  <ls_return>-type CA 'AEX'.
 
-      REFRESH: lt_item, lt_itemx, lt_extensionin.
+          DATA(lv_error) = abap_true.
+
+        ENDIF.
+
+        APPEND VALUE #( msgid = <ls_return>-id
+                        msgty = <ls_return>-type
+                        msgno = <ls_return>-number
+                        msgv1 = <ls_return>-message_v1 ) TO lt_messages.
+
+      ENDLOOP.
+
+      IF lv_error IS NOT INITIAL.
+
+        CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+
+      ELSE.
+
+        CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+          EXPORTING
+            wait   = abap_true
+          IMPORTING
+            return = ls_return.
+
+      ENDIF.
+
+      CLEAR: lv_po, ls_po_header, ls_po_headerx, ls_te_mepoitem, lt_item, lt_itemx, lt_extensionin.
 
     ENDLOOP.
 
-    LOOP AT lt_return ASSIGNING FIELD-SYMBOL(<ls_return>).
-
-      MESSAGE <ls_return>-message TYPE 'S'.
-
-    ENDLOOP.
+    CALL FUNCTION 'C14Z_MESSAGES_SHOW_AS_POPUP'
+      TABLES
+        i_message_tab = lt_messages.
 
   ENDMETHOD.
 
 ENDCLASS.
 
-PARAMETERS: p_binput RADIOBUTTON GROUP rbg1 DEFAULT 'X',
-            p_bapi   RADIOBUTTON GROUP rbg1,
-            p_file   TYPE ibipparms-path.
-
-DATA: gv_choice      TYPE i,
-      go_binput_bapi TYPE REF TO lcl_binput_bapi.
+DATA: go_binput_bapi TYPE REF TO lcl_binput_bapi.
 
 AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
 
@@ -276,14 +296,4 @@ START-OF-SELECTION.
 
   CREATE OBJECT go_binput_bapi.
 
-  IF p_binput = abap_true.
-
-    gv_choice = 1.
-
-  ELSE.
-
-    gv_choice = 2.
-
-  ENDIF.
-
-  go_binput_bapi->execute( iv_choice = gv_choice iv_file = p_file ).
+  go_binput_bapi->execute( iv_choice = p_binput iv_file = p_file ).
