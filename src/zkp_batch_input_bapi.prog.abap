@@ -144,6 +144,9 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
           lt_messages TYPE esp1_message_tab_type,
           ls_options  TYPE ctu_params.
 
+    ls_options-dismode = 'N'.
+    ls_options-updmode = 'S'.
+
     LOOP AT mt_ekpo INTO DATA(ms_ekpo) GROUP BY ( ebeln = ms_ekpo-ebeln ) ASSIGNING FIELD-SYMBOL(<lg_group>).
 
       SET PARAMETER ID 'BES' FIELD <lg_group>.
@@ -165,9 +168,6 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
 
       APPEND VALUE #( fnam = 'BDC_OKCODE' fval = '=BU' ) TO lt_bdcdata.
 
-      ls_options-dismode = 'N'.
-      ls_options-updmode = 'S'.
-
       CALL TRANSACTION 'ME22' USING lt_bdcdata OPTIONS FROM ls_options MESSAGES INTO lt_messtab.
 
     ENDLOOP.
@@ -177,7 +177,11 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
       APPEND VALUE #( msgid = <ls_messtab>-msgid
                       msgty = <ls_messtab>-msgtyp
                       msgno = <ls_messtab>-msgnr
-                      msgv1 = |{ <ls_messtab>-msgv1 }{ <ls_messtab>-msgv2 }{ <ls_messtab>-msgv3 }{ <ls_messtab>-msgv4 }| ) TO lt_messages.
+                      msgv1 = <ls_messtab>-msgv1
+                      msgv2 = <ls_messtab>-msgv2
+                      msgv3 = <ls_messtab>-msgv3
+                      msgv4 = <ls_messtab>-msgv4
+                      LINENO = sy-tabix ) TO lt_messages.
 
     ENDLOOP.
 
@@ -250,7 +254,11 @@ CLASS lcl_binput_bapi IMPLEMENTATION.
         APPEND VALUE #( msgid = <ls_return>-id
                         msgty = <ls_return>-type
                         msgno = <ls_return>-number
-                        msgv1 = <ls_return>-message_v1 ) TO lt_messages.
+                        msgv1 = <ls_return>-message_v1
+                        msgv2 = <ls_return>-message_v2
+                        msgv3 = <ls_return>-message_v3
+                        msgv4 = <ls_return>-message_v4
+                        LINENO = Lines( lt_messages ) + 1 ) TO lt_messages.
 
       ENDLOOP.
 
