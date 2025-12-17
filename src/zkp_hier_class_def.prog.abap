@@ -170,7 +170,7 @@ CLASS lcl_hierarchy IMPLEMENTATION.
                   descript
       FROM setheadert
       INTO @DATA(ls_hier)
-      WHERE setname = @iv_hier
+      WHERE setname = @mv_root
         AND langu   = @sy-langu.
 
     IF sy-subrc = 0.
@@ -327,6 +327,8 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
     ENDLOOP.
 
+    SORT mt_alv_table BY expand_icon order.
+
     SET HANDLER on_alv_button_click FOR mo_alv.
 
     mo_alv->set_table_for_first_display(
@@ -411,11 +413,11 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
       READ TABLE mt_alv_view ASSIGNING FIELD-SYMBOL(<ls_alv_view>) INDEX <ls_rows>-index.
 
-      IF sy-subrc = 0.
+      IF sy-subrc = 0 AND <ls_alv_view>-expand_icon IS NOT INITIAL.
 
         READ TABLE mt_alv_table ASSIGNING FIELD-SYMBOL(<ls_alv_tab>) WITH KEY node_key = <ls_alv_view>-node_key.
 
-        IF sy-subrc = 0 AND <ls_alv_tab>-expand_icon IS NOT INITIAL.
+        IF sy-subrc = 0.
 
           CASE <ls_alv_tab>-expand_icon.
 
@@ -423,8 +425,6 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
               <ls_alv_tab>-expand_icon  = icon_collapse.
               <ls_alv_view>-expand_icon = icon_collapse.
-
-              SORT mt_alv_table BY expand_icon order.
 
               toggle_children_recursive( iv_relatkey = <ls_alv_view>-node_key
                                          iv_expand   = abap_true
@@ -434,8 +434,6 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
               <ls_alv_tab>-expand_icon = icon_expand.
               <ls_alv_view>-expand_icon = icon_expand.
-
-              SORT mt_alv_table BY expand_icon order.
 
               toggle_children_recursive( iv_relatkey = <ls_alv_view>-node_key
                                          iv_expand   = abap_false
