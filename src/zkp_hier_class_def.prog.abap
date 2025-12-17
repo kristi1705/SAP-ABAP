@@ -31,8 +31,8 @@ CLASS lcl_hierarchy DEFINITION.
           mt_nodes     TYPE STANDARD TABLE OF mtreesnode,
           mt_alv_table TYPE tt_alv_table,
           mt_alv_view  TYPE tt_alv_table,
-          mv_leaf_key  TYPE i,
-          mv_root(12)  TYPE c.
+          mv_leaf_key  TYPE i.
+      CONSTANTS cv_root(12)  TYPE c VALUE 0.
 
     METHODS:
       setup_ui,
@@ -40,7 +40,7 @@ CLASS lcl_hierarchy DEFINITION.
       build_tree,
       build_alv,
       build_alv_data_recursive IMPORTING is_node TYPE mtreesnode CHANGING cv_order TYPE i OPTIONAL,
-      get_children_recursive IMPORTING iv_setname TYPE setnamenew,
+      get_children_recursive IMPORTING iv_setname TYPE c iv_relatkey TYPE i OPTIONAL,
       on_alv_button_click FOR EVENT hotspot_click OF cl_gui_alv_grid
         IMPORTING e_row_id e_column_id,
       toggle_children_recursive IMPORTING iv_relatkey TYPE c iv_expand TYPE abap_bool iv_row TYPE lvc_index.
@@ -164,18 +164,17 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
   METHOD get_data.
 
-    mv_root = iv_hier.
 
     SELECT SINGLE setname,
                   descript
       FROM setheadert
       INTO @DATA(ls_hier)
-      WHERE setname = @mv_root
+      WHERE setname = @iv_hier
         AND langu   = @sy-langu.
 
     IF sy-subrc = 0.
 
-      mt_nodes = VALUE #( ( node_key  = ls_hier-setname
+      mt_nodes = VALUE #( ( node_key  = cv_root
                             isfolder  = abap_true
                             expander  = abap_true
                             text      = |{ ls_hier-setname }     { ls_hier-descript }|
@@ -184,9 +183,9 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
       get_children_recursive( iv_setname = ls_hier-setname ).
 
-    else.
+    ELSE.
 
-    MESSAGE 'No hierarchies found with the specified name in the database!' TYPE 'S' DISPLAY LIKE 'E'.
+      MESSAGE 'No hierarchies found with the specified name in the database!' TYPE 'S' DISPLAY LIKE 'E'.
 
     ENDIF.
 
@@ -213,14 +212,13 @@ CLASS lcl_hierarchy IMPLEMENTATION.
           WHERE matnr = <ls_setleaf>-valfrom
           AND spras = sy-langu.
 
-        mt_nodes = VALUE #( BASE mt_nodes
-                            ( node_key  = mv_leaf_key
-                              relatkey  = iv_setname
-                              isfolder  = abap_false
-                              expander  = abap_false
-                              text      = |{ <ls_setleaf>-valfrom }     { lv_maktx }|
-                              n_image   = '@0Y@'
-                              exp_image = '@0Y@' ) ).
+        APPEND VALUE #( node_key  = mv_leaf_key
+                             relatkey  = iv_relatkey
+                             isfolder  = abap_false
+                             expander  = abap_false
+                             text      = |{ <ls_setleaf>-valfrom }     { lv_maktx }|
+                             n_image   = '@0Y@'
+                             exp_image = '@0Y@' )  TO mt_nodes.
 
       ENDLOOP.
 
@@ -235,39 +233,32 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
       LOOP AT lt_setnode ASSIGNING FIELD-SYMBOL(<ls_setnode>).
 
-        SELECT setname,
+        SELECT SINGLE
                descript
           FROM setheadert
-          INTO TABLE @DATA(lt_sethier)
+          INTO @DATA(lv_descript)
           WHERE setname = @<ls_setnode>-subsetname
             AND langu   = @sy-langu.
 
-        IF sy-subrc = 0.
 
-          LOOP AT lt_sethier ASSIGNING FIELD-SYMBOL(<ls_sethier>).
 
-            mt_nodes = VALUE #( BASE mt_nodes
-                                ( node_key  = <ls_sethier>-setname
-                                  relatkey  = iv_setname
-                                  isfolder  = abap_true
-                                  expander  = abap_true
-                                  text      = |{ <ls_sethier>-setname }     { <ls_sethier>-descript }|
-                                  n_image   = icon_folder
-                                  exp_image = icon_folder ) ).
+        mv_leaf_key += 1.
 
-          ENDLOOP.
+        APPEND VALUE #( node_key  = mv_leaf_key
+                              relatkey  = iv_relatkey
+                              isfolder  = abap_true
+                              expander  = abap_true
+                              text      = |{ <ls_setnode>-subsetname }     { lv_descript }|
+                              n_image   = icon_folder
+                              exp_image = icon_folder )  TO mt_nodes.
 
-        ENDIF.
 
+
+        DATA(lv_relatkey) = mv_leaf_key.
+        get_children_recursive( iv_setname = <ls_setnode>-subsetname iv_relatkey = lv_relatkey ).
       ENDLOOP.
 
     ENDIF.
-
-    LOOP AT lt_setnode ASSIGNING <ls_setnode>.
-
-      get_children_recursive( iv_setname = <ls_setnode>-subsetname ).
-
-    ENDLOOP.
 
   ENDMETHOD.
 
@@ -290,7 +281,7 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
     ENDIF.
 
-    READ TABLE mt_nodes ASSIGNING FIELD-SYMBOL(<ls_nodes>) WITH KEY node_key = mv_root.
+    READ TABLE mt_nodes ASSIGNING FIELD-SYMBOL(<ls_nodes>) WITH KEY node_key = cv_root.
 
     IF sy-subrc = 0.
 
@@ -376,7 +367,7 @@ CLASS lcl_hierarchy IMPLEMENTATION.
 
     ENDIF.
 
-    IF is_node-relatkey IS INITIAL OR is_node-relatkey = mv_root.
+    IF is_node-relatkey IS INITIAL OR is_node-relatkey = cv_root.
 
       ls_alv-visible = abap_true.
 
