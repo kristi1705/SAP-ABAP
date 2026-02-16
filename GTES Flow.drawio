@@ -16,7 +16,7 @@
         <mxCell id="6sEt1Ydq8zDmemA_c-kX-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" value="SAP → GTES JSON&#xa;(Mapping)" vertex="1">
           <mxGeometry height="100" width="180" x="460" y="430" as="geometry" />
         </mxCell>
-        <mxCell id="6sEt1Ydq8zDmemA_c-kX-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" value="Submit JSON to GTES Server&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;( IMPORTING GTES_FILE_ID )&lt;/div&gt;" vertex="1">
+        <mxCell id="6sEt1Ydq8zDmemA_c-kX-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Submit JSON to GTES Server&lt;/font&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;( IMPORTING GTES_FILE_ID )&lt;/div&gt;" vertex="1">
           <mxGeometry height="130" width="380" x="360" y="580" as="geometry" />
         </mxCell>
         <mxCell id="6sEt1Ydq8zDmemA_c-kX-11" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1" value="&lt;div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;&lt;div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;RECEIVE DOCUMENT STATUS&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;font-size: 16px;&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;( GET_DATA_IMPORT_STATUS )&lt;/font&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
