@@ -1,0 +1,232 @@
+
+        _data_end   = ls_available_desc-lifbi
+        _data_end_p = lv_lifbi
+        _status     = 'Errore'
+        _mex        = 'Errore durante aggiornamento variante' ) TO et_output.
+
+      RETURN.
+
+    ENDIF.
+
+    DATA(ls_headdata) = VALUE bapimathead( material = lv_matnr ).
+    APPEND INITIAL LINE TO lt_extensionin ASSIGNING FIELD-SYMBOL(<ls_extensionin>).
+    <ls_extensionin>-structure = 'BAPI_TE_MARA'.
+
+    DATA(ls_bapi_te_mara) = VALUE bapi_te_mara(
+*     zorigine    = is_input-_orig
+*     zstapro     = is_input-_stab_pro
+*     zstafis     = is_input-_stat_fis
+*     zqual       = is_input-_qual
+*     zfiliera    = is_input-_supp_ch
+*     zproreg     = is_input-_prov_pr
+*     znomespe    = is_input-_name_s
+*     zonafao     = is_input-_f_a_o
+*     zallerg     = is_input-_allerg
+*     ztpimbp     = is_input-_imb_pr_f
+*     zmetoconf   = is_input-_pack_met
+*     zcarattdie  = is_input-_diet
+*     zlavoraz    = is_input-_proces
+*     zdenonim    = is_input-_den
+*     zbu         = is_input-_b_u
+*     zmateriale  = is_input-_mat
+*     zscomparti  = is_input-_compart
+*     ztermo      = is_input-_termos
+*     zcertmoca   = is_input-_m_o_c_a
+*     zperson     = is_input-_pers
+*     zcam        = is_input-_c_a_m
+*     zincern     = is_input-_inc
+*     zriciclab   = is_input-_recyble
+*     zriciclat   = is_input-_recyced
+*     zeco        = is_input-_e_c_o
+*     zriven      = is_input-_resell
+*     zcert       = is_input-_cert
+*     zimballi    = is_input-_imb
+*     zconf       = is_input-_pack
+*     zcarat      = is_input-_feat
+*     zcatdpi     = is_input-_d_p_i
+*     zbunf       = is_input-_b_u_n_f
+*     zimbprim    = is_input-_imb_pr_n_f
+).
+
+    cl_abap_container_utilities=>fill_container_c(
+     EXPORTING
+       im_value               = ls_bapi_te_mara                 " Data for Filling Container
+     IMPORTING
+       ex_container           = <ls_extensionin>+30             " Container
+     EXCEPTIONS
+       illegal_parameter_type = 1                               " Invalid type for the parameter IM_VALUE
+       OTHERS                 = 2 ).
+
+    APPEND INITIAL LINE TO lt_extensioninx ASSIGNING FIELD-SYMBOL(<ls_extensioninx>).
+    <ls_extensioninx>-structure = 'BAPI_TE_MARAX'.
+
+    DATA(ls_bapi_te_marax) = VALUE bapi_te_marax(
+*     zorigine    = abap_true
+*     zstapro     = abap_true
+*     zstafis     = abap_true
+*     zqual       = abap_true
+*     zfiliera    = abap_true
+*     zproreg     = abap_true
+*     znomespe    = abap_true
+*     zonafao     = abap_true
+*     zallerg     = abap_true
+*     ztpimbp     = abap_true
+*     zmetoconf   = abap_true
+*     zcarattdie  = abap_true
+*     zlavoraz    = abap_true
+*     zdenonim    = abap_true
+*     zbu         = abap_true
+*     zmateriale  = abap_true
+*     zscomparti  = abap_true
+*     ztermo      = abap_true
+*     zcertmoca   = abap_true
+*     zperson     = abap_true
+*     zcam        = abap_true
+*     zincern     = abap_true
+*     zriciclab   = abap_true
+*     zriciclat   = abap_true
+*     zeco        = abap_true
+*     zriven      = abap_true
+*     zcert       = abap_true
+*     zimballi    = abap_true
+*     zconf       = abap_true
+*     zcarat      = abap_true
+*     zcatdpi     = abap_true
+*     zbunf       = abap_true
+*     zimbprim    = abap_true
+).
+
+    cl_abap_container_utilities=>fill_container_c(
+     EXPORTING
+       im_value               = ls_bapi_te_marax                " Data for Filling Container
+     IMPORTING
+       ex_container           = <ls_extensioninx>+30            " Container
+     EXCEPTIONS
+       illegal_parameter_type = 1                               " Invalid type for the parameter IM_VALUE
+       OTHERS                 = 2 ).
+
+    CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+      EXPORTING
+        headdata     = ls_headdata
+*       CLIENTDATA   =
+*       CLIENTDATAX  =
+*       PLANTDATA    =
+*       PLANTDATAX   =
+*       FORECASTPARAMETERS          =
+*       FORECASTPARAMETERSX         =
+*       PLANNINGDATA =
+*       PLANNINGDATAX               =
+*       STORAGELOCATIONDATA         =
+*       STORAGELOCATIONDATAX        =
+*       VALUATIONDATA               =
+*       VALUATIONDATAX              =
+*       WAREHOUSENUMBERDATA         =
+*       WAREHOUSENUMBERDATAX        =
+*       SALESDATA    =
+*       SALESDATAX   =
+*       STORAGETYPEDATA             =
+*       STORAGETYPEDATAX            =
+*       FLAG_ONLINE  = ' '
+*       FLAG_CAD_CALL               = ' '
+*       NO_DEQUEUE   = ' '
+*       NO_ROLLBACK_WORK            = ' '
+*       CLIENTDATACWM               =
+*       CLIENTDATACWMX              =
+*       VALUATIONDATACWM            =
+*       VALUATIONDATACWMX           =
+*       MATPLSTADATA =
+*       MATPLSTADATAX               =
+*       MARC_APS_EXTDATA            =
+*       MARC_APS_EXTDATAX           =
+      IMPORTING
+        return       = lt_return
+*      TABLES
+*       MATERIALDESCRIPTION         =
+*       UNITSOFMEASURE              =
+*       UNITSOFMEASUREX             =
+*       INTERNATIONALARTNOS         =
+*       MATERIALLONGTEXT            =
+*       TAXCLASSIFICATIONS          =
+*       RETURNMESSAGES              =
+*       PRTDATA      =
+*       PRTDATAX     =
+        extensionin  = lt_extensionin
+        extensioninx = lt_extensioninx
+*       UNITSOFMEASURECWM           =
+*       UNITSOFMEASURECWMX          =
+*       SEGMRPGENERALDATA           =
+*       SEGMRPGENERALDATAX          =
+*       SEGMRPQUANTITYDATA          =
+*       SEGMRPQUANTITYDATAX         =
+*       SEGVALUATIONTYPE            =
+*       SEGVALUATIONTYPEX           =
+*       SEGSALESSTATUS              =
+*       SEGSALESSTATUSX             =
+*       SEGWEIGHTVOLUME             =
+*       SEGWEIGHTVOLUMEX            =
+*       DEMAND_PENALTYDATA          =
+*       DEMAND_PENALTYDATAX         =
+*       NFMCHARGEWEIGHTS            =
+*       NFMCHARGEWEIGHTSX           =
+*       NFMSTRUCTURALWEIGHTS        =
+*       NFMSTRUCTURALWEIGHTSX       =
+      .
+
+    LOOP AT lt_return ASSIGNING FIELD-SYMBOL(<ls_return>) WHERE type CA 'AEX'.
+
+      DATA(lv_error) = abap_true.
+
+    ENDLOOP.
+
+    IF lv_error IS NOT INITIAL.
+
+      CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'.
+
+      APPEND VALUE #(
+              _p_f_o      = is_input-_p_f_o
+              _desc       = ls_available_desc-maktx
+              _variant    = lv_matnr
+              _vendor     = is_input-_vend
+              _data_cr    = lv_ersda
+              _data_end   = ls_available_desc-lifbi
+              _data_end_p = lv_lifbi
+              _status     = 'Errore'
+              _mex        = 'Errore durante aggiornamento variante' ) TO et_output.
+
+      RETURN.
+
+    ENDIF.
+
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        wait   = abap_true
+      IMPORTING
+        return = ls_return.
+
+    IF ls_return-type CA 'AEX'.
+      APPEND VALUE #(
+              _p_f_o      = is_input-_p_f_o
+              _desc       = ls_available_desc-maktx
+              _variant    = lv_matnr
+              _vendor     = is_input-_vend
+              _data_cr    = lv_ersda
+              _data_end   = ls_available_desc-lifbi
+              _data_end_p = lv_lifbi
+              _status     = 'Errore'
+              _mex        = 'Errore durante aggiornamento variante' ) TO et_output.
+
+      RETURN.
+    ENDIF.
+
+    APPEND VALUE #(
+              _p_f_o      = is_input-_p_f_o
+              _desc       = ls_available_desc-maktx
+              _variant    = lv_matnr
+              _vendor     = is_input-_vend
+              _data_cr    = lv_ersda
+              _data_end   = ls_available_desc-lifbi
+              _data_end_p = lv_lifbi
+              _status     = 'Success'
+              _mex        = 'La variante è stata aggiornata correttamente' ) TO et_output.
+
+  ENDMETHOD.
