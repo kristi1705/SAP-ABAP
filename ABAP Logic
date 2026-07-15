@@ -1,0 +1,374 @@
+ *&---------------------------------------------------------------------*
+*& Report ZED_XML_FILE
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zkp_xml_file.
+
+DATA: BEGIN OF gs_scr_100 ,
+        ok_code TYPE sy-ucomm,
+      END OF gs_scr_100.
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+  PARAMETERS: p_file TYPE localfile OBLIGATORY DEFAULT 'C:\Users\User\Desktop\SAP\General Mills\pdf - Copy.xml'.
+SELECTION-SCREEN END OF BLOCK b1.
+
+CLASS lcl_xml_display DEFINITION.
+
+  PUBLIC SECTION.
+
+    METHODS:
+      get_file
+        RETURNING VALUE(rv_file) TYPE string,
+
+      upload_xml
+        IMPORTING iv_path           TYPE string
+        RETURNING VALUE(rv_xstring) TYPE xstring,
+
+      find_binary_object
+        IMPORTING iv_xstring TYPE xstring,
+
+      get_header_fields
+        IMPORTING iv_xstring TYPE xstring,
+
+      display_pdf.
+
+  PRIVATE SECTION.
+
+    DATA mv_content   TYPE string.
+
+ENDCLASS.
+
+CLASS lcl_xml_display IMPLEMENTATION.
+
+  METHOD get_file.
+
+    DATA: lt_files TYPE filetable,
+          lv_rc    TYPE i.
+
+    cl_gui_frontend_services=>file_open_dialog(
+      EXPORTING
+        window_title            = 'Select XML File'      " Title Of File Open Dialog
+        default_filename        = '*.xml'                " Default File Name
+        file_filter             = '*.xml'                " File Extension Filter String
+      CHANGING
+        file_table              = lt_files               " Table Holding Selected Files
+        rc                      = lv_rc                  " Return Code, Number of Files or -1 If Error Occurred
+      EXCEPTIONS
+        file_open_dialog_failed = 1                " "Open File" dialog failed
+        cntl_error              = 2                " Control error
+        error_no_gui            = 3                " No GUI available
+        not_supported_by_gui    = 4                " GUI does not support this
+        OTHERS                  = 5
+    ).
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+    rv_file = COND #(
+                      WHEN lv_rc = 1
+                      THEN VALUE #( lt_files[ 1 ]-filename OPTIONAL )
+                      ELSE '').
+
+  ENDMETHOD.
+
+  METHOD upload_xml.
+
+    DATA: lt_raw    TYPE solix_tab,
+          lv_length TYPE i.
+
+    cl_gui_frontend_services=>gui_upload(
+      EXPORTING
+        filename                = iv_path          " Name of file
+        filetype                = 'BIN'            " File Type (ASCII, Binary)
+      CHANGING
+        data_tab                = lt_raw           " Transfer table for file contents
+      EXCEPTIONS
+        file_open_error         = 1                " File does not exist and cannot be opened
+        file_read_error         = 2                " Error when reading file
+        no_batch                = 3                " Front-End Function Cannot Be Executed in Backgrnd
+        gui_refuse_filetransfer = 4                " Incorrect front end or error on front end
+        invalid_type            = 5                " Incorrect parameter FILETYPE
+        no_authority            = 6                " No Upload Authorization
+        unknown_error           = 7                " Unknown error
+        bad_data_format         = 8                " Cannot Interpret Data in File
+        header_not_allowed      = 9                " Invalid header
+        separator_not_allowed   = 10               " Invalid separator
+        header_too_long         = 11               " Header information currently restricted to 1023 bytes
+        unknown_dp_error        = 12               " Error when calling data provider
+        access_denied           = 13               " Access to File Denied
+        dp_out_of_memory        = 14               " Not Enough Memory in DataProvider
+        disk_full               = 15               " Storage Medium full
+        dp_timeout              = 16               " Timeout of DataProvider
+        not_supported_by_gui    = 17               " GUI does not support this
+        error_no_gui            = 18               " GUI not available
+        OTHERS                  = 19
+    ).
+    IF sy-subrc <> 0.
+      MESSAGE 'Error uploading XML file' TYPE 'E'.
+    ENDIF.
+
+    lv_length = lines( lt_raw ) * 255.
+
+    CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
+      EXPORTING
+        input_length = lv_length
+      IMPORTING
+        buffer       = rv_xstring
+      TABLES
+        binary_tab   = lt_raw
+      EXCEPTIONS
+        failed       = 1
+        OTHERS       = 2.
+    IF sy-subrc <> 0.
+      MESSAGE 'Error converting binary to xstring' TYPE 'E'.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD get_header_fields.
+
+*    CALL TRANSFORMATION id
+*          SOURCE (iv_string)
+*          OPTIONS
+
+
+
+  ENDMETHOD.
+
+  METHOD find_binary_object.
+
+*    CLEAR mv_content.
+*
+*    DATA(lo_ixml)   = cl_ixml=>create( ).
+*    DATA(lo_doc)    = lo_ixml->create_document( ).
+*    DATA(lo_parser) = lo_ixml->create_parser(
+*                        document       = lo_doc
+*                        istream        = lo_ixml->create_stream_factory( )->create_istream_xstring( iv_xstring )
+*                        stream_factory = lo_ixml->create_stream_factory( )
+*    ).
+*
+*    IF lo_parser->parse( ) <> 0.
+*      MESSAGE 'XML parsing failed' TYPE 'E'.
+*    ENDIF.
+
+
+
+*    DATA(lo_ref_filter) = lo_doc->create_filter_name_ns(
+*      name      = 'AdditionalDocumentReference'
+*      namespace = 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2'
+*    ).
+*
+*    DATA(lo_binary_filter) = lo_doc->create_filter_and(
+*      filter1 = lo_doc->create_filter_name_ns(
+*                  name      = 'EmbeddedDocumentBinaryObject'
+*                  namespace = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2'
+*                )
+*      filter2 = lo_doc->create_filter_attribute(
+*                  name  = 'mimeCode'
+*                  value = 'application/pdf'
+*                )
+*    ).
+*
+*    DATA(lo_filtered_iterator) = lo_doc->create_iterator_filtered( lo_ref_filter ).
+*    DATA(lo_ref)               = lo_filtered_iterator->get_next( ).
+*
+*    WHILE lo_ref IS BOUND.
+*
+*      DATA(lo_bin) = lo_ref->create_iterator_filtered( lo_binary_filter )->get_next( ).
+*
+*      IF lo_bin IS BOUND.
+*        mv_content = lo_bin->get_value( ).
+*        EXIT.
+*      ENDIF.
+*
+*      lo_ref = lo_filtered_iterator->get_next( ).
+*
+*    ENDWHILE.
+
+    TYPES:
+      BEGIN OF ty_xml_mapping,
+        xml_fname TYPE string,
+        sap_fname TYPE string,
+        conv_type TYPE char1,
+      END OF ty_xml_mapping .
+    DATA:
+      mt_xml_mapping TYPE SORTED TABLE OF ty_xml_mapping WITH UNIQUE KEY xml_fname .
+
+    TYPES: BEGIN OF ty_ap_item,
+             inv_number                 TYPE string,
+             inv_type                   TYPE string,
+             inv_date                   TYPE string,
+             due_date                   TYPE string,
+             inv_curr_code              TYPE string,
+             inv_start_date             TYPE string,
+             inv_end_date               TYPE string,
+             purchase_order_ref         TYPE string,
+             sales_order_ref            TYPE string,
+             seller_trade_name          TYPE string,
+             seller_endpoint            TYPE string,
+             seller_vat_id              TYPE string,
+             seller_legal_name          TYPE string,
+             seller_tax_id              TYPE string,
+             bank_acc_id                TYPE string,
+             payment_acc_name           TYPE string,
+             payment_terms              TYPE string,
+             total_amount               TYPE string,
+             net_amount                 TYPE string,
+             tax_amount                 TYPE string,
+             charge_amount              TYPE string,
+             allow_amount               TYPE string,
+             paid_amount                TYPE string,
+             due_amount                 TYPE string,
+             addt_doc_embedded_filename TYPE string,
+             attachment_base64          TYPE string,
+           END OF ty_ap_item.
+    DATA: ls_ap_item TYPE ty_ap_item.
+
+    TRY.
+        CALL TRANSFORMATION zubl_test2
+          SOURCE XML iv_xstring
+          RESULT inv = ls_ap_item.
+      CATCH cx_transformation_error INTO DATA(lx_err).
+        lx_err->get_longtext( ).
+    ENDTRY.
+
+
+    cl_demo_output=>display(
+      data = ls_ap_item                " Text or Data
+    ).
+
+    mv_content = ls_ap_item-attachment_base64.
+
+
+
+  ENDMETHOD.
+
+  METHOD display_pdf.
+
+    DATA: lo_container TYPE REF TO cl_gui_custom_container,
+          lo_viewer    TYPE REF TO cl_gui_html_viewer,
+          lt_pdf_tab   TYPE solix_tab,
+          lv_size      TYPE i,
+          lv_url       TYPE char255,
+          lv_clean     TYPE string,
+          lv_xstring   TYPE xstring,
+          lv_html_xstr TYPE xstring.
+
+    CALL FUNCTION 'SCMS_BASE64_DECODE_STR'
+      EXPORTING
+        input  = mv_content
+      IMPORTING
+        output = lv_xstring
+      EXCEPTIONS
+        failed = 1
+        OTHERS = 2.
+    IF sy-subrc <> 0.
+      MESSAGE 'Based64 decoding failed' TYPE 'E'.
+    ENDIF.
+
+    CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+      EXPORTING
+        buffer        = lv_xstring
+      IMPORTING
+        output_length = lv_size
+      TABLES
+        binary_tab    = lt_pdf_tab.
+    IF sy-subrc <> 0.
+      MESSAGE 'Error preparing PDF binary' TYPE 'E'.
+    ENDIF.
+
+    CREATE OBJECT lo_container
+      EXPORTING
+        container_name              = 'PDF'                 " Name of the Screen CustCtrl Name to Link Container To
+      EXCEPTIONS
+        cntl_error                  = 1                " CNTL_ERROR
+        cntl_system_error           = 2                " CNTL_SYSTEM_ERROR
+        create_error                = 3                " CREATE_ERROR
+        lifetime_error              = 4                " LIFETIME_ERROR
+        lifetime_dynpro_dynpro_link = 5                " LIFETIME_DYNPRO_DYNPRO_LINK
+        OTHERS                      = 6.
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+    lo_viewer = NEW cl_gui_html_viewer(
+      parent = lo_container                 " Container
+    ).
+
+    lo_viewer->load_data(
+      EXPORTING
+        type                   = 'application'           " Type of a MIME Object
+        subtype                = 'pdf'           " Subtype of a MIME Object
+      IMPORTING
+        assigned_url           = lv_url                 " URL
+      CHANGING
+        data_table             = lt_pdf_tab                 " data table
+      EXCEPTIONS
+        dp_invalid_parameter   = 1                " invalid parameter in a DP call
+        dp_error_general       = 2                " gerneral error in a DP call
+        cntl_error             = 3                " error
+        html_syntax_notcorrect = 4                " HTML data is invalid and check all the tags' syntax
+        OTHERS                 = 5
+    ).
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+    lo_viewer->show_url(
+      EXPORTING
+        url                    = lv_url                  " URL
+        in_place               = 'X'             " Is the document displayed in the GUI?
+      EXCEPTIONS
+        cntl_error             = 1                " Error in CFW Call
+        cnht_error_not_allowed = 2                " Navigation outside R/3 is not allowed
+        cnht_error_parameter   = 3                " Incorrect parameters
+        dp_error_general       = 4                " Error in DP FM call
+        OTHERS                 = 5
+    ).
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+    cl_gui_cfw=>flush(
+      EXCEPTIONS
+        cntl_system_error = 1                " cntl_system_error
+        cntl_error        = 2                " cntl_error
+        OTHERS            = 3
+    ).
+
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+        WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+  p_file = NEW lcl_xml_display( )->get_file( ).
+
+START-OF-SELECTION.
+
+  TRY.
+      DATA(lo_reader) = NEW lcl_xml_display( ).
+
+      DATA(lv_xml_xstr) = lo_reader->upload_xml( iv_path = CONV string( p_file ) ).
+
+      lo_reader->find_binary_object( iv_xstring = lv_xml_xstr ).
+
+      CALL SCREEN 100.
+    CATCH cx_static_check INTO DATA(lx_error).
+      MESSAGE lx_error->get_text( ) TYPE 'E'.
+  ENDTRY.
+
+  INCLUDE zkp_xml_file_status_0100.
+
+  INCLUDE zkp_xml_file_user_command_0i01.
+
+  INCLUDE zkp_xml_file_init_pdf_vieweo01.
