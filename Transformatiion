@@ -1,0 +1,92 @@
+<xsl:transform xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:asx="http://www.sap.com/abapxml" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:cac=
+"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" version="1.0">
+
+  <xsl:strip-space elements="*"/>
+
+  <xsl:template match="/">
+    <asx:abap version="1.0">
+      <asx:values>
+        <INV>
+          <INV_NUMBER>
+            <xsl:value-of select="/*/cbc:ID"/>
+          </INV_NUMBER>
+          <INV_TYPE>
+            <xsl:value-of select="/*/cbc:InvoiceTypeCode"/>
+          </INV_TYPE>
+          <INV_DATE>
+            <xsl:value-of select="/*/cbc:IssueDate"/>
+          </INV_DATE>
+          <DUE_DATE>
+            <xsl:value-of select="/*/cbc:DueDate"/>
+          </DUE_DATE>
+          <INV_CURR_CODE>
+            <xsl:value-of select="/*/cbc:DocumentCurrencyCode"/>
+          </INV_CURR_CODE>
+          <INV_START_DATE>
+            <xsl:value-of select="/*/cac:InvoicePeriod/cbc:StartDate"/>
+          </INV_START_DATE>
+          <INV_END_DATE>
+            <xsl:value-of select="/*/cac:InvoicePeriod/cbc:EndDate"/>
+          </INV_END_DATE>
+          <PURCHASE_ORDER_REF>
+            <xsl:value-of select="/*/cac:OrderReference/cbc:ID"/>
+          </PURCHASE_ORDER_REF>
+          <SALES_ORDER_REF>
+            <xsl:value-of select="/*/cac:OrderReference/cbc:SalesOrderID"/>
+          </SALES_ORDER_REF>
+          <SELLER_TRADE_NAME>
+            <xsl:value-of select="/*/cac:AccountingSupplierParty/cac:Party/cac:PartyName/cbc:Name"/>
+          </SELLER_TRADE_NAME>
+          <SELLER_ENDPOINT>
+            <xsl:value-of select="/*/cac:AccountingSupplierParty/cac:Party/cbc:EndpointID"/>
+          </SELLER_ENDPOINT>
+          <SELLER_VAT_ID>
+            <xsl:value-of select="/*/cac:AccountingSupplierParty/cac:Party/cac:PartyTaxScheme/cbc:CompanyID"/>
+          </SELLER_VAT_ID>
+          <SELLER_LEGAL_NAME>
+            <xsl:value-of select="/*/cac:AccountingSupplierParty/cac:Party/cac:PartyLegalEntity/cbc:RegistrationName"/>
+          </SELLER_LEGAL_NAME>
+          <SELLER_TAX_ID>
+            <xsl:value-of select="/*/cac:AccountingSupplierParty/cac:Party/cac:PartyLegalEntity/cbc:CompanyID"/>
+          </SELLER_TAX_ID>
+          <BANK_ACC_ID>
+            <xsl:value-of select="/*/cac:PaymentMeans/cac:PayeeFinancialAccount/cbc:ID"/>
+          </BANK_ACC_ID>
+          <PAYMENT_ACC_NAME>
+            <xsl:value-of select="/*/cac:PaymentMeans/cac:PayeeFinancialAccount/cbc:Name"/>
+          </PAYMENT_ACC_NAME>
+          <PAYMENT_TERMS>
+            <xsl:value-of select="/*/cac:PaymentTerms/cbc:Note"/>
+          </PAYMENT_TERMS>
+          <TOTAL_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:TaxInclusiveAmount"/>
+          </TOTAL_AMOUNT>
+          <NET_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:TaxExclusiveAmount"/>
+          </NET_AMOUNT>
+          <TAX_AMOUNT>
+            <xsl:value-of select="/*/cac:TaxTotal/cbc:TaxAmount"/>
+          </TAX_AMOUNT>
+          <CHARGE_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:ChargeTotalAmount"/>
+          </CHARGE_AMOUNT>
+          <ALLOW_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:AllowanceTotalAmount"/>
+          </ALLOW_AMOUNT>
+          <PAID_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:PrepaidAmount"/>
+          </PAID_AMOUNT>
+          <DUE_AMOUNT>
+            <xsl:value-of select="/*/cac:LegalMonetaryTotal/cbc:PayableAmount"/>
+          </DUE_AMOUNT>
+          <ADDT_DOC_EMBEDDED_FILENAME>
+            <xsl:value-of select="(/*/cac:AdditionalDocumentReference[cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode='application/pdf']/cbc:ID)[1]"/>
+          </ADDT_DOC_EMBEDDED_FILENAME>
+          <ATTACHMENT_BASE64>
+            <xsl:value-of select="(/*/cac:AdditionalDocumentReference[cac:Attachment/cbc:EmbeddedDocumentBinaryObject/@mimeCode='application/pdf']/cac:Attachment/cbc:EmbeddedDocumentBinaryObject)[1]"/>
+          </ATTACHMENT_BASE64>
+        </INV>
+      </asx:values>
+    </asx:abap>
+  </xsl:template>
+</xsl:transform>
